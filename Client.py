@@ -7,7 +7,6 @@
 import logging
 import discord  # Third-party
 import coloredlogs  # Third-party
-from Commands import Commands
 from Configurations import Configurations
 
 # Set up the logging messages
