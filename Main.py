@@ -10,6 +10,7 @@ import sys
 import coloredlogs                      # Third-party
 from configparser import ConfigParser   # Third-party
 from Client import Client               # Self-made
+from Configurations import Configurations
 
 # Set up the logging messages
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ coloredlogs.install(level='DEBUG', logger=logger)
 ############################################################
 # Function: Obtain Configurations
 ############################################################
-def ObtainConfigurations():
+def RetrieveConfigurations():
     """
     Obtain all configuration data from the configuration file.
     """
@@ -28,24 +29,44 @@ def ObtainConfigurations():
     configFileName = "config.ini"
     configFilePath = os.path.join('.', 'data', configFileName)
 
-    try:
-        # Read the configuration file
-        parser = ConfigParser()
-        parser.read(configFilePath)
+    if os.path.isfile(configFilePath):
 
-        # Retrieve data from default category
-        token = parser.get("default", "token")
-        status = parser.get("default", "status")
-        activityType = parser.get("default", "activity_type")
-        activityName = parser.get("default", "activity_name")
+        config = Configurations()
+        default = "default"
+        optional = "optional"
 
-        logger.debug("Obtained successfully the configurations data.")
+        try:
+            # Read the configuration file
+            parser = ConfigParser()
+            parser.read(configFilePath)
 
-    except Exception as error:
-        logging.critical("Could not retrieve data from configuration file: {0}".format(error))
-        sys.exit("Program terminated.")
+            # Retrieve mandatory configuration
+            config.token = parser.get(default, "token")
+            config.commandPrefix = parser.get(default, "command_prefix")
 
-    return token, status, activityType, activityName
+            # Retrieve optional configurations
+            config.invisible = parser.get(optional, "invisible")
+            config.activityType = parser.get(optional, "activity_type")
+            config.activityName = parser.get(optional, "activity_name")
+
+        except Exception as msg:
+            logging.critical("Could not retrieve data from configuration file: {0}".format(msg))
+            sys.exit("Program terminated.")
+
+        # Check if the mandatory configuration is received
+        if config.token and config.commandPrefix:
+            logger.debug("Obtained successfully all the mandatory configurations.")
+
+            # Return the object containing all the configurations
+            return config
+
+        else:
+            logger.critical("Did not obtain all mandatory configurations.")
+            sys.exit("Program terminated.")
+
+    else:
+        logger.critical("The config file cannot be found. Expected to find at: {0}".format(configFilePath))
+        sys.exit("Program terminated")
 
 
 ############################################################
@@ -57,13 +78,13 @@ def Main():
     """
 
     # Obtain configuration settings from the configuration file
-    token, status, activityType, activityName = ObtainConfigurations()
+    config: Configurations = RetrieveConfigurations()
 
     # Create new discord client object
-    client = Client(status, activityType, activityName)
+    client = Client(config)
 
     # Run the discord bot
-    client.run(token)
+    client.run(config.token)
 
 
 ############################################################

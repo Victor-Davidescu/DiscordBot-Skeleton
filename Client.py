@@ -5,8 +5,10 @@
 
 # Imported modules
 import logging
-import discord      # Third-party
+import discord  # Third-party
 import coloredlogs  # Third-party
+from Commands import Commands
+from Configurations import Configurations
 
 # Set up the logging messages
 logger = logging.getLogger(__name__)
@@ -21,12 +23,9 @@ class Client(discord.Client):
     ############################################################
     # Constructor
     ############################################################
-    def __init__(self, status, activityType, activityName):
+    def __init__(self, config: Configurations):
         super().__init__()
-        self.status = status
-        self.activityType = activityType
-        self.activityName = activityName
-
+        self.config = config
 
     ############################################################
     # Function: Set status
@@ -36,35 +35,29 @@ class Client(discord.Client):
         Change the bot presence
         """
 
-        # Set the status of the bot based on the received configuration
-        if self.status == "AWAY":
-            self.status = discord.Status.idle
-            logger.warning("Bot status set to idle.")
-
-        elif self.status == "INVISIBLE":
-            self.status = discord.Status.invisible
-            logger.warning("Bot status set to invisible, activity cannot be visible.")
-
+        # Bot - Status
+        # Check if the bot requires to be invisible
+        if self.config.invisible == "TRUE":
+            logger.warning("Bot status set to invisible.")
+            status = discord.Status.invisible
         else:
-            self.status = discord.Status.online
-            logger.info("Bot status set to online.")
+            status = discord.Status.online
 
+        # Bot - Activity
         # Set an activity for the bot
-        if self.activityType == "GAME":
-            self.activityType = discord.Game(self.activityName)
-            logger.info("Bot activity set to game with description: {0}".format(self.activityName))
-
+        if self.config.activityType == "GAME":
+            self.config.activityType = discord.Game(self.config.activityName)
+            logger.info("Bot activity set to game with description: {0}".format(self.config.activityName))
         else:
-            self.activityType = None
+            self.config.activityType = None
 
         # Change bot presence
         try:
-            await self.change_presence(status=self.status, activity=self.activityType)
+            await self.change_presence(status=status, activity=self.config.activityType)
             logger.debug("Successfully changed the bot presence.")
 
         except Exception as error:
-            logging.error("Could not change the presence. {0}".format(error))
-
+            logger.error("Could not change the presence. {0}".format(error))
 
     ############################################################
     # Function:
@@ -73,13 +66,16 @@ class Client(discord.Client):
         logger.info("Bot is ready, logged as {0}.".format(self.user))
         await self.ChangePresence()
 
-
     ############################################################
     # Function:
     ############################################################
-    async def on_message(self, message):
+    async def on_message(self, message: discord.Message):
         logger.debug("Message from {0.author}: {0.content}".format(message))
 
         # Check if the message is not from itself
         if message.author != self.user:
-            pass
+
+            # Check if the message starts with a command prefix
+            if message.content.startswith(self.config.commandPrefix):
+                logger.debug("Command prefix detected.")
+                pass
